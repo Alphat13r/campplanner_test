@@ -1,0 +1,5 @@
+# GitHub Pages Configuration
+# This file enables GitHub Pages for the repository
+
+site: CampPlanner
+theme: null
