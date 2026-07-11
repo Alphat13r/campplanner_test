@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏕️ CampPlanner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
@@ -17,41 +19,53 @@
         .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        h2 { margin-bottom: 2rem; color: #2d7d3a; }
-        .lageplan-wrapper { display: grid; grid-template-columns: 1fr 250px; gap: 2rem; }
-        .lageplan-controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        h2 { margin-bottom: 2rem; color: #2d7d3a; font-size: 2rem; }
+        h3 { color: #2d7d3a; margin: 0 0 1rem 0; border-bottom: 2px solid #2d7d3a; padding-bottom: 0.5rem; }
+        h4 { color: #2d7d3a; }
+        
+        .lageplan-wrapper { display: grid; grid-template-columns: 1fr 280px; gap: 2rem; }
+        .lageplan-controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; grid-column: 1/-1; }
         .lageplan-controls input, .lageplan-controls select, .lageplan-controls button { padding: 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
         .lageplan-controls button { background: #2d7d3a; color: white; cursor: pointer; font-weight: 600; }
-        .lageplan-canvas { position: relative; background: white; border: 2px solid #ddd; border-radius: 8px; min-height: 500px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        .lageplan-element { position: absolute; width: 60px; height: 60px; background: white; border: 2px solid #2d7d3a; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: grab; font-size: 1.5rem; }
-        .lageplan-list { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-height: 400px; overflow-y: auto; }
+        #map { width: 100%; height: 500px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border: 2px solid #ddd; }
+        .map-search { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .map-search input { flex: 1; padding: 0.6rem; border: 1px solid #ddd; border-radius: 6px; }
+        .map-search button { padding: 0.6rem 1rem; background: #2d7d3a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        
+        .lageplan-list { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-height: 500px; overflow-y: auto; }
         .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-        .list-item button { background: #ff6b35; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
+        .list-item button { background: #ff6b35; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        
         .checklist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
         .checklist-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        .checklist-section h3 { margin-bottom: 1rem; color: #2d7d3a; border-bottom: 2px solid #2d7d3a; padding-bottom: 0.5rem; }
         .checklist-section ul { list-style: none; }
         .checklist-section li { display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0; }
         .checklist-section input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #2d7d3a; }
-        .checklist-section label { cursor: pointer; flex: 1; }
+        .checklist-section label { cursor: pointer; flex: 1; margin: 0; }
         .checklist-section input[type="checkbox"]:checked + label { text-decoration: line-through; color: #999; }
+        
         .planning-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
         .form-section, .result-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
         .form-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
         .form-group input, .form-group select { flex: 1; padding: 0.6rem; border: 1px solid #ddd; border-radius: 6px; }
         .form-group button { padding: 0.6rem 1rem; background: #2d7d3a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
-        .result-section h4 { margin-bottom: 1rem; color: #2d7d3a; }
-        .result-section table { width: 100%; border-collapse: collapse; }
+        .result-section h4 { margin-bottom: 1rem; }
+        .result-section table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         .result-section th, .result-section td { padding: 0.7rem; text-align: left; border-bottom: 1px solid #ddd; }
-        .result-section th { background: #f5f5f5; font-weight: 600; color: #2d7d3a; }
-        .result-section button { background: #ff6b35; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
+        .result-section th { background: #f5f5f5; font-weight: 600; }
+        .result-section button { background: #ff6b35; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        
         .timeline { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
         .timeline-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        .timeline-section h3 { margin-bottom: 1rem; color: #2d7d3a; }
+        .timeline-section h3 { margin: 0 0 1rem 0; }
         .timeline-item { padding: 1rem; border-left: 4px solid #2d7d3a; margin-bottom: 1rem; background: #f9f9f9; border-radius: 4px; }
-        .timeline-day { font-weight: 600; color: #2d7d3a; }
+        .timeline-day { font-weight: 600; }
         .timeline-tasks { font-size: 0.9rem; color: #666; margin-top: 0.5rem; }
-        @media (max-width: 768px) { .lageplan-wrapper, .planning-grid, .timeline { grid-template-columns: 1fr; } }
+        
+        @media (max-width: 768px) { 
+            .lageplan-wrapper, .planning-grid, .timeline { grid-template-columns: 1fr; } 
+            #map { height: 400px; }
+        }
     </style>
 </head>
 <body>
@@ -74,7 +88,12 @@
             <h2>🗺️ Lageplan</h2>
             <div class="lageplan-wrapper">
                 <div>
-                    <div class="lageplan-controls">
+                    <div class="map-search">
+                        <input type="text" id="locationSearch" placeholder="z.B. Hannover, Deutschland" value="Hannover, Deutschland">
+                        <button onclick="searchLocation()">🔍 Suchen</button>
+                    </div>
+                    <div id="map"></div>
+                    <div class="lageplan-controls" style="margin-top: 1rem;">
                         <select id="elementType">
                             <option value="tent">🏕️ Zelt</option>
                             <option value="spuel">🚿 Spülmobil</option>
@@ -83,12 +102,11 @@
                             <option value="food">🍽️ Essenszelt</option>
                             <option value="storage">📦 Materialzelt</option>
                         </select>
-                        <input type="text" id="elementName" placeholder="Name..." style="flex: 1;">
-                        <button onclick="addElement()">Hinzufügen</button>
+                        <input type="text" id="elementName" placeholder="Name eingeben...">
+                        <button onclick="addElement()">➕ Hinzufügen</button>
                     </div>
-                    <div id="lageplan-canvas" class="lageplan-canvas"></div>
                 </div>
-                <div class="lageplan-list" id="lageplan-list"></div>
+                <div class="lageplan-list" id="lageplan-list"><h4>Elemente</h4></div>
             </div>
         </div>
 
@@ -106,13 +124,14 @@
             <h2>⚡ Stromplanung</h2>
             <div class="planning-grid">
                 <div class="form-section">
+                    <h3>Gerät hinzufügen</h3>
                     <div class="form-group">
-                        <input type="text" id="stromName" placeholder="Gerät/Station">
-                        <input type="number" id="stromKw" placeholder="kW" step="0.1">
-                        <button onclick="addStrom()">Hinzufügen</button>
+                        <input type="text" id="stromName" placeholder="z.B. Beleuchtung">
+                        <input type="number" id="stromKw" placeholder="kW" step="0.1" value="1">
+                        <button onclick="addStrom()">➕</button>
                     </div>
                 </div>
-                <div class="result-section" id="strom-result"></div>
+                <div class="result-section" id="strom-result"><h4>Gesamtbedarf: 0 kW</h4></div>
             </div>
         </div>
 
@@ -120,13 +139,14 @@
             <h2>🚰 Wasserplanung</h2>
             <div class="planning-grid">
                 <div class="form-section">
+                    <h3>Station hinzufügen</h3>
                     <div class="form-group">
-                        <input type="text" id="wasserName" placeholder="Station">
-                        <input type="number" id="wasserLiters" placeholder="Liter">
-                        <button onclick="addWasser()">Hinzufügen</button>
+                        <input type="text" id="wasserName" placeholder="z.B. Spülmobil">
+                        <input type="number" id="wasserLiters" placeholder="Liter" value="1000">
+                        <button onclick="addWasser()">➕</button>
                     </div>
                 </div>
-                <div class="result-section" id="wasser-result"></div>
+                <div class="result-section" id="wasser-result"><h4>Gesamtkapazität: 0 L</h4></div>
             </div>
         </div>
 
@@ -137,80 +157,129 @@
     </div>
 
     <script>
-        let data = JSON.parse(localStorage.getItem('campplanner-data') || '{"elements":[],"strom":[],"wasser":[]}');
-        let draggingElement = null;
-        let offset = { x: 0, y: 0 };
+        let map = null;
+        let markers = {};
+        let data = JSON.parse(localStorage.getItem('campplanner-data') || '{"elements":[],"strom":[],"wasser":[],"mapCenter":[52.37,13.39]}');
 
         const icons = { tent: '🏕️', spuel: '🚿', toilet: '🚽', fire: '🔥', food: '🍽️', storage: '📦' };
-        const aufbau = [ { day: 'Sonntag', items: ['Partnerschaftszelt Hockete abholen', 'DRK-Zelt abholen'] }, { day: 'Montag', items: ['Material anliefern', 'Materialzelt stellen', 'Schlafzelte stellen', 'Essenszelt stellen (18Uhr)'] }, { day: 'Dienstag', items: ['Schlafzelte stellen', 'Material anliefern', 'Strom verteilen', 'Wasser anschließen', 'Spülmobil anschließen', 'Toilettenwagen aufstellen', 'Feuerstelle vorbereiten'] }, { day: 'Mittwoch', items: ['Essenszelt vorbereiten', 'Pavillons stellen', 'Freizeitangeboten vorbereiten', 'Sicherheitskontrolle'] } ];
-        const abbau = [ { day: 'Sonntag (morgens)', items: ['Schlafzelte Faulstreifen putzen', 'Müll einsammeln', 'Freizeitangebote abbauen', 'Hütte von Mitarbeitermaterial/-Gepäck befreien'] }, { day: 'Sonntag (mittags)', items: ['Schlafzelte abbauen (mit Eltern)', 'Essenszelt abbauen (mit Eltern)', 'Materialzelt leer räumen', 'Strom einsammeln', 'Wasser abbauen', 'Spülmobil reinigen', 'Toilettenwagen reinigen', 'Müll entsorgen', 'Material zählen', 'Materialzelt abbauen', 'Endkontrolle Gelände'] } ];
+        const aufbau = [ 
+            { day: 'Sonntag', items: ['Partnerschaftszelt Hockete abholen', 'DRK-Zelt abholen'] }, 
+            { day: 'Montag', items: ['Material anliefern', 'Materialzelt stellen', 'Schlafzelte stellen', 'Essenszelt stellen (18Uhr)'] }, 
+            { day: 'Dienstag', items: ['Schlafzelte stellen', 'Material anliefern', 'Strom verteilen', 'Wasser anschließen', 'Spülmobil anschließen', 'Toilettenwagen aufstellen', 'Feuerstelle vorbereiten'] }, 
+            { day: 'Mittwoch', items: ['Essenszelt vorbereiten', 'Pavillons stellen', 'Freizeitangeboten vorbereiten', 'Sicherheitskontrolle'] } 
+        ];
+        const abbau = [ 
+            { day: 'Sonntag (morgens)', items: ['Schlafzelte Faulstreifen putzen', 'Müll einsammeln', 'Freizeitangebote abbauen', 'Hütte von Mitarbeitermaterial/-Gepäck befreien'] }, 
+            { day: 'Sonntag (mittags)', items: ['Schlafzelte abbauen (mit Eltern)', 'Essenszelt abbauen (mit Eltern)', 'Materialzelt leer räumen', 'Strom einsammeln', 'Wasser abbauen', 'Spülmobil reinigen', 'Toilettenwagen reinigen', 'Müll entsorgen', 'Material zählen', 'Materialzelt abbauen', 'Endkontrolle Gelände'] } 
+        ];
 
         function saveData() { localStorage.setItem('campplanner-data', JSON.stringify(data)); }
+        
+        function initMap() {
+            const center = data.mapCenter || [52.37, 13.39];
+            map = L.map('map').setView(center, 15);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            map.on('moveend', () => {
+                const c = map.getCenter();
+                data.mapCenter = [c.lat, c.lng];
+                saveData();
+            });
+
+            renderLageplan();
+        }
+
+        function searchLocation() {
+            const location = document.getElementById('locationSearch').value;
+            if (!location) return;
+            
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
+                .then(r => r.json())
+                .then(results => {
+                    if (results.length > 0) {
+                        const { lat, lon } = results[0];
+                        map.setView([parseFloat(lat), parseFloat(lon)], 15);
+                        data.mapCenter = [parseFloat(lat), parseFloat(lon)];
+                        saveData();
+                    } else {
+                        alert('Ort nicht gefunden!');
+                    }
+                })
+                .catch(e => console.error('Fehler:', e));
+        }
+
         function switchTab(tabName, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             btn.classList.add('active');
-            if (tabName === 'aufbau') renderChecklist('aufbau', aufbau);
-            if (tabName === 'abbau') renderChecklist('abbau', abbau);
-            if (tabName === 'strom') renderStrom();
-            if (tabName === 'wasser') renderWasser();
-            if (tabName === 'zeitplanung') renderTimeline();
+            
+            if (tabName === 'lageplan' && map) {
+                setTimeout(() => map.invalidateSize(), 100);
+            }
         }
 
         function addElement() {
             const type = document.getElementById('elementType').value;
             const name = document.getElementById('elementName').value;
-            if (!name) return;
-            data.elements.push({ id: Date.now(), type, name, x: 100, y: 100 });
+            if (!name) return alert('Bitte einen Namen eingeben!');
+            
+            const center = map.getCenter();
+            data.elements.push({ 
+                id: Date.now(), 
+                type, 
+                name, 
+                lat: center.lat + (Math.random() - 0.5) * 0.001, 
+                lng: center.lng + (Math.random() - 0.5) * 0.001 
+            });
             saveData();
             renderLageplan();
             document.getElementById('elementName').value = '';
         }
 
         function renderLageplan() {
-            const canvas = document.getElementById('lageplan-canvas');
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+
             const list = document.getElementById('lageplan-list');
-            canvas.innerHTML = '';
             list.innerHTML = '<h4>Elemente</h4>';
+
             data.elements.forEach(el => {
-                const div = document.createElement('div');
-                div.className = 'lageplan-element';
-                div.style.left = el.x + 'px';
-                div.style.top = el.y + 'px';
-                div.innerHTML = icons[el.type] || '📍';
-                div.onmousedown = (e) => startDrag(e, el.id);
-                canvas.appendChild(div);
+                const popupText = `<strong>${el.name}</strong><br><button onclick="deleteElement(${el.id})">Löschen</button>`;
+                const marker = L.marker([el.lat, el.lng], {
+                    icon: L.divIcon({
+                        html: `<div style="font-size: 2rem; cursor: grab;">${icons[el.type] || '📍'}</div>`,
+                        iconSize: [40, 40],
+                        className: 'custom-marker'
+                    }),
+                    draggable: true
+                }).addTo(map).bindPopup(popupText);
+
+                marker.on('dragend', () => {
+                    const pos = marker.getLatLng();
+                    el.lat = pos.lat;
+                    el.lng = pos.lng;
+                    saveData();
+                });
+
+                markers[el.id] = marker;
+
                 const item = document.createElement('div');
                 item.className = 'list-item';
-                item.innerHTML = `<span>${icons[el.type]} ${el.name}</span><button onclick="deleteElement(${el.id})">Löschen</button>`;
+                item.innerHTML = `<span>${icons[el.type]} ${el.name}</span><button onclick="deleteElement(${el.id})">🗑️</button>`;
                 list.appendChild(item);
             });
         }
 
-        function startDrag(e, id) {
-            draggingElement = id;
-            const rect = document.getElementById('lageplan-canvas').getBoundingClientRect();
-            offset.x = e.clientX - rect.left;
-            offset.y = e.clientY - rect.top;
-            document.addEventListener('mousemove', drag);
-            document.addEventListener('mouseup', stopDrag);
+        function deleteElement(id) { 
+            data.elements = data.elements.filter(el => el.id !== id); 
+            saveData(); 
+            renderLageplan(); 
         }
-
-        function drag(e) {
-            if (!draggingElement) return;
-            const rect = document.getElementById('lageplan-canvas').getBoundingClientRect();
-            const el = data.elements.find(e => e.id === draggingElement);
-            if (el) {
-                el.x = Math.max(0, e.clientX - rect.left - offset.x);
-                el.y = Math.max(0, e.clientY - rect.top - offset.y);
-                saveData();
-                renderLageplan();
-            }
-        }
-
-        function stopDrag() { draggingElement = null; document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', stopDrag); }
-        function deleteElement(id) { data.elements = data.elements.filter(el => el.id !== id); saveData(); renderLageplan(); }
 
         function renderChecklist(type, checklist) {
             const container = document.getElementById(type + '-checklist');
@@ -233,44 +302,49 @@
         function saveChecklistItem(key, checked) { checked ? localStorage.setItem(key, 'true') : localStorage.removeItem(key); }
 
         function addStrom() {
-            const name = document.getElementById('stromName').value;
-            const kw = parseFloat(document.getElementById('stromKw').value);
-            if (!name || !kw) return;
+            const name = document.getElementById('stromName').value || 'Gerät';
+            const kw = parseFloat(document.getElementById('stromKw').value) || 0;
+            if (kw <= 0) return alert('Bitte eine gültige kW-Zahl eingeben!');
             data.strom.push({ id: Date.now(), name, kw });
             saveData();
             renderStrom();
             document.getElementById('stromName').value = '';
-            document.getElementById('stromKw').value = '';
+            document.getElementById('stromKw').value = '1';
         }
 
         function renderStrom() {
             const result = document.getElementById('strom-result');
             const total = data.strom.reduce((sum, i) => sum + i.kw, 0);
-            let html = `<h4>Gesamtbedarf: ${total.toFixed(2)} kW</h4><table><thead><tr><th>Gerät</th><th>kW</th><th></th></tr></thead><tbody>`;
-            data.strom.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.kw}</td><td><button onclick="deleteStrom(${item.id})">Löschen</button></td></tr>`; });
-            html += '</tbody></table>';
+            let html = `<h4>Gesamtbedarf: ${total.toFixed(2)} kW</h4>`;
+            if (data.strom.length > 0) {
+                html += '<table><thead><tr><th>Gerät</th><th>kW</th><th></th></tr></thead><tbody>';
+                data.strom.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.kw}</td><td><button onclick="deleteStrom(${item.id})">Löschen</button></td></tr>`; });
+                html += '</tbody></table>';
+            }
             result.innerHTML = html;
         }
 
         function deleteStrom(id) { data.strom = data.strom.filter(i => i.id !== id); saveData(); renderStrom(); }
 
         function addWasser() {
-            const name = document.getElementById('wasserName').value;
-            const liters = parseInt(document.getElementById('wasserLiters').value);
-            if (!name || !liters) return;
+            const name = document.getElementById('wasserName').value || 'Station';
+            const liters = parseInt(document.getElementById('wasserLiters').value) || 1000;
             data.wasser.push({ id: Date.now(), name, liters });
             saveData();
             renderWasser();
             document.getElementById('wasserName').value = '';
-            document.getElementById('wasserLiters').value = '';
+            document.getElementById('wasserLiters').value = '1000';
         }
 
         function renderWasser() {
             const result = document.getElementById('wasser-result');
             const total = data.wasser.reduce((sum, i) => sum + i.liters, 0);
-            let html = `<h4>Gesamtkapazität: ${total.toLocaleString('de-DE')} L</h4><table><thead><tr><th>Station</th><th>Liter</th><th></th></tr></thead><tbody>`;
-            data.wasser.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.liters.toLocaleString('de-DE')}</td><td><button onclick="deleteWasser(${item.id})">Löschen</button></td></tr>`; });
-            html += '</tbody></table>';
+            let html = `<h4>Gesamtkapazität: ${total.toLocaleString('de-DE')} L</h4>`;
+            if (data.wasser.length > 0) {
+                html += '<table><thead><tr><th>Station</th><th>Liter</th><th></th></tr></thead><tbody>';
+                data.wasser.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.liters.toLocaleString('de-DE')}</td><td><button onclick="deleteWasser(${item.id})">Löschen</button></td></tr>`; });
+                html += '</tbody></table>';
+            }
             result.innerHTML = html;
         }
 
@@ -286,7 +360,15 @@
             timeline.innerHTML = html;
         }
 
-        renderLageplan();
+        // INITIALISIERUNG
+        window.addEventListener('load', function() {
+            initMap();
+            renderChecklist('aufbau', aufbau);
+            renderChecklist('abbau', abbau);
+            renderStrom();
+            renderWasser();
+            renderTimeline();
+        });
     </script>
 </body>
 </html>
