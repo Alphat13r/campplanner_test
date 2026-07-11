@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏕️ CampPlanner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+        .navbar { background: linear-gradient(135deg, #2d7d3a 0%, #1e5a2a 100%); color: white; padding: 1rem; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .logo { font-size: 1.5rem; font-weight: bold; }
+        .nav-links { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .nav-btn { background: rgba(255, 255, 255, 0.2); color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
+        .nav-btn.active { background: #ff6b35; }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        h2 { margin-bottom: 2rem; color: #2d7d3a; }
+        .lageplan-wrapper { display: grid; grid-template-columns: 1fr 250px; gap: 2rem; }
+        .lageplan-controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .lageplan-controls input, .lageplan-controls select, .lageplan-controls button { padding: 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+        .lageplan-controls button { background: #2d7d3a; color: white; cursor: pointer; font-weight: 600; }
+        .lageplan-canvas { position: relative; background: white; border: 2px solid #ddd; border-radius: 8px; min-height: 500px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .lageplan-element { position: absolute; width: 60px; height: 60px; background: white; border: 2px solid #2d7d3a; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: grab; font-size: 1.5rem; }
+        .lageplan-list { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-height: 400px; overflow-y: auto; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .list-item button { background: #ff6b35; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
+        .checklist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .checklist-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .checklist-section h3 { margin-bottom: 1rem; color: #2d7d3a; border-bottom: 2px solid #2d7d3a; padding-bottom: 0.5rem; }
+        .checklist-section ul { list-style: none; }
+        .checklist-section li { display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0; }
+        .checklist-section input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #2d7d3a; }
+        .checklist-section label { cursor: pointer; flex: 1; }
+        .checklist-section input[type="checkbox"]:checked + label { text-decoration: line-through; color: #999; }
+        .planning-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .form-section, .result-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .form-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .form-group input, .form-group select { flex: 1; padding: 0.6rem; border: 1px solid #ddd; border-radius: 6px; }
+        .form-group button { padding: 0.6rem 1rem; background: #2d7d3a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .result-section h4 { margin-bottom: 1rem; color: #2d7d3a; }
+        .result-section table { width: 100%; border-collapse: collapse; }
+        .result-section th, .result-section td { padding: 0.7rem; text-align: left; border-bottom: 1px solid #ddd; }
+        .result-section th { background: #f5f5f5; font-weight: 600; color: #2d7d3a; }
+        .result-section button { background: #ff6b35; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
+        .timeline { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .timeline-section { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .timeline-section h3 { margin-bottom: 1rem; color: #2d7d3a; }
+        .timeline-item { padding: 1rem; border-left: 4px solid #2d7d3a; margin-bottom: 1rem; background: #f9f9f9; border-radius: 4px; }
+        .timeline-day { font-weight: 600; color: #2d7d3a; }
+        .timeline-tasks { font-size: 0.9rem; color: #666; margin-top: 0.5rem; }
+        @media (max-width: 768px) { .lageplan-wrapper, .planning-grid, .timeline { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">🏕️ CampPlanner</div>
+            <div class="nav-links">
+                <button class="nav-btn active" onclick="switchTab('lageplan', this)">🗺️</button>
+                <button class="nav-btn" onclick="switchTab('aufbau', this)">📈</button>
+                <button class="nav-btn" onclick="switchTab('abbau', this)">📉</button>
+                <button class="nav-btn" onclick="switchTab('strom', this)">⚡</button>
+                <button class="nav-btn" onclick="switchTab('wasser', this)">🚰</button>
+                <button class="nav-btn" onclick="switchTab('zeitplanung', this)">📅</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="lageplan" class="tab-content active">
+            <h2>🗺️ Lageplan</h2>
+            <div class="lageplan-wrapper">
+                <div>
+                    <div class="lageplan-controls">
+                        <select id="elementType">
+                            <option value="tent">🏕️ Zelt</option>
+                            <option value="spuel">🚿 Spülmobil</option>
+                            <option value="toilet">🚽 Toilettenwagen</option>
+                            <option value="fire">🔥 Feuerstelle</option>
+                            <option value="food">🍽️ Essenszelt</option>
+                            <option value="storage">📦 Materialzelt</option>
+                        </select>
+                        <input type="text" id="elementName" placeholder="Name..." style="flex: 1;">
+                        <button onclick="addElement()">Hinzufügen</button>
+                    </div>
+                    <div id="lageplan-canvas" class="lageplan-canvas"></div>
+                </div>
+                <div class="lageplan-list" id="lageplan-list"></div>
+            </div>
+        </div>
+
+        <div id="aufbau" class="tab-content">
+            <h2>📈 Aufbau-Checkliste</h2>
+            <div class="checklist-grid" id="aufbau-checklist"></div>
+        </div>
+
+        <div id="abbau" class="tab-content">
+            <h2>📉 Abbau-Checkliste</h2>
+            <div class="checklist-grid" id="abbau-checklist"></div>
+        </div>
+
+        <div id="strom" class="tab-content">
+            <h2>⚡ Stromplanung</h2>
+            <div class="planning-grid">
+                <div class="form-section">
+                    <div class="form-group">
+                        <input type="text" id="stromName" placeholder="Gerät/Station">
+                        <input type="number" id="stromKw" placeholder="kW" step="0.1">
+                        <button onclick="addStrom()">Hinzufügen</button>
+                    </div>
+                </div>
+                <div class="result-section" id="strom-result"></div>
+            </div>
+        </div>
+
+        <div id="wasser" class="tab-content">
+            <h2>🚰 Wasserplanung</h2>
+            <div class="planning-grid">
+                <div class="form-section">
+                    <div class="form-group">
+                        <input type="text" id="wasserName" placeholder="Station">
+                        <input type="number" id="wasserLiters" placeholder="Liter">
+                        <button onclick="addWasser()">Hinzufügen</button>
+                    </div>
+                </div>
+                <div class="result-section" id="wasser-result"></div>
+            </div>
+        </div>
+
+        <div id="zeitplanung" class="tab-content">
+            <h2>📅 Zeitplanung</h2>
+            <div class="timeline" id="timeline"></div>
+        </div>
+    </div>
+
+    <script>
+        let data = JSON.parse(localStorage.getItem('campplanner-data') || '{"elements":[],"strom":[],"wasser":[]}');
+        let draggingElement = null;
+        let offset = { x: 0, y: 0 };
+
+        const icons = { tent: '🏕️', spuel: '🚿', toilet: '🚽', fire: '🔥', food: '🍽️', storage: '📦' };
+        const aufbau = [ { day: 'Sonntag', items: ['Partnerschaftszelt Hockete abholen', 'DRK-Zelt abholen'] }, { day: 'Montag', items: ['Material anliefern', 'Materialzelt stellen', 'Schlafzelte stellen', 'Essenszelt stellen (18Uhr)'] }, { day: 'Dienstag', items: ['Schlafzelte stellen', 'Material anliefern', 'Strom verteilen', 'Wasser anschließen', 'Spülmobil anschließen', 'Toilettenwagen aufstellen', 'Feuerstelle vorbereiten'] }, { day: 'Mittwoch', items: ['Essenszelt vorbereiten', 'Pavillons stellen', 'Freizeitangeboten vorbereiten', 'Sicherheitskontrolle'] } ];
+        const abbau = [ { day: 'Sonntag (morgens)', items: ['Schlafzelte Faulstreifen putzen', 'Müll einsammeln', 'Freizeitangebote abbauen', 'Hütte von Mitarbeitermaterial/-Gepäck befreien'] }, { day: 'Sonntag (mittags)', items: ['Schlafzelte abbauen (mit Eltern)', 'Essenszelt abbauen (mit Eltern)', 'Materialzelt leer räumen', 'Strom einsammeln', 'Wasser abbauen', 'Spülmobil reinigen', 'Toilettenwagen reinigen', 'Müll entsorgen', 'Material zählen', 'Materialzelt abbauen', 'Endkontrolle Gelände'] } ];
+
+        function saveData() { localStorage.setItem('campplanner-data', JSON.stringify(data)); }
+        function switchTab(tabName, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            if (tabName === 'aufbau') renderChecklist('aufbau', aufbau);
+            if (tabName === 'abbau') renderChecklist('abbau', abbau);
+            if (tabName === 'strom') renderStrom();
+            if (tabName === 'wasser') renderWasser();
+            if (tabName === 'zeitplanung') renderTimeline();
+        }
+
+        function addElement() {
+            const type = document.getElementById('elementType').value;
+            const name = document.getElementById('elementName').value;
+            if (!name) return;
+            data.elements.push({ id: Date.now(), type, name, x: 100, y: 100 });
+            saveData();
+            renderLageplan();
+            document.getElementById('elementName').value = '';
+        }
+
+        function renderLageplan() {
+            const canvas = document.getElementById('lageplan-canvas');
+            const list = document.getElementById('lageplan-list');
+            canvas.innerHTML = '';
+            list.innerHTML = '<h4>Elemente</h4>';
+            data.elements.forEach(el => {
+                const div = document.createElement('div');
+                div.className = 'lageplan-element';
+                div.style.left = el.x + 'px';
+                div.style.top = el.y + 'px';
+                div.innerHTML = icons[el.type] || '📍';
+                div.onmousedown = (e) => startDrag(e, el.id);
+                canvas.appendChild(div);
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `<span>${icons[el.type]} ${el.name}</span><button onclick="deleteElement(${el.id})">Löschen</button>`;
+                list.appendChild(item);
+            });
+        }
+
+        function startDrag(e, id) {
+            draggingElement = id;
+            const rect = document.getElementById('lageplan-canvas').getBoundingClientRect();
+            offset.x = e.clientX - rect.left;
+            offset.y = e.clientY - rect.top;
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function drag(e) {
+            if (!draggingElement) return;
+            const rect = document.getElementById('lageplan-canvas').getBoundingClientRect();
+            const el = data.elements.find(e => e.id === draggingElement);
+            if (el) {
+                el.x = Math.max(0, e.clientX - rect.left - offset.x);
+                el.y = Math.max(0, e.clientY - rect.top - offset.y);
+                saveData();
+                renderLageplan();
+            }
+        }
+
+        function stopDrag() { draggingElement = null; document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', stopDrag); }
+        function deleteElement(id) { data.elements = data.elements.filter(el => el.id !== id); saveData(); renderLageplan(); }
+
+        function renderChecklist(type, checklist) {
+            const container = document.getElementById(type + '-checklist');
+            container.innerHTML = '';
+            checklist.forEach(section => {
+                const div = document.createElement('div');
+                div.className = 'checklist-section';
+                let html = `<h3>${section.day}</h3><ul>`;
+                section.items.forEach((item, i) => {
+                    const key = `${type}-${section.day}-${i}`;
+                    const checked = localStorage.getItem(key);
+                    html += `<li><input type="checkbox" id="${key}" ${checked ? 'checked' : ''} onchange="saveChecklistItem('${key}', this.checked)"><label for="${key}">${item}</label></li>`;
+                });
+                html += '</ul>';
+                div.innerHTML = html;
+                container.appendChild(div);
+            });
+        }
+
+        function saveChecklistItem(key, checked) { checked ? localStorage.setItem(key, 'true') : localStorage.removeItem(key); }
+
+        function addStrom() {
+            const name = document.getElementById('stromName').value;
+            const kw = parseFloat(document.getElementById('stromKw').value);
+            if (!name || !kw) return;
+            data.strom.push({ id: Date.now(), name, kw });
+            saveData();
+            renderStrom();
+            document.getElementById('stromName').value = '';
+            document.getElementById('stromKw').value = '';
+        }
+
+        function renderStrom() {
+            const result = document.getElementById('strom-result');
+            const total = data.strom.reduce((sum, i) => sum + i.kw, 0);
+            let html = `<h4>Gesamtbedarf: ${total.toFixed(2)} kW</h4><table><thead><tr><th>Gerät</th><th>kW</th><th></th></tr></thead><tbody>`;
+            data.strom.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.kw}</td><td><button onclick="deleteStrom(${item.id})">Löschen</button></td></tr>`; });
+            html += '</tbody></table>';
+            result.innerHTML = html;
+        }
+
+        function deleteStrom(id) { data.strom = data.strom.filter(i => i.id !== id); saveData(); renderStrom(); }
+
+        function addWasser() {
+            const name = document.getElementById('wasserName').value;
+            const liters = parseInt(document.getElementById('wasserLiters').value);
+            if (!name || !liters) return;
+            data.wasser.push({ id: Date.now(), name, liters });
+            saveData();
+            renderWasser();
+            document.getElementById('wasserName').value = '';
+            document.getElementById('wasserLiters').value = '';
+        }
+
+        function renderWasser() {
+            const result = document.getElementById('wasser-result');
+            const total = data.wasser.reduce((sum, i) => sum + i.liters, 0);
+            let html = `<h4>Gesamtkapazität: ${total.toLocaleString('de-DE')} L</h4><table><thead><tr><th>Station</th><th>Liter</th><th></th></tr></thead><tbody>`;
+            data.wasser.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.liters.toLocaleString('de-DE')}</td><td><button onclick="deleteWasser(${item.id})">Löschen</button></td></tr>`; });
+            html += '</tbody></table>';
+            result.innerHTML = html;
+        }
+
+        function deleteWasser(id) { data.wasser = data.wasser.filter(i => i.id !== id); saveData(); renderWasser(); }
+
+        function renderTimeline() {
+            const timeline = document.getElementById('timeline');
+            let html = '<div class="timeline-section"><h3>📈 Aufbau</h3>';
+            aufbau.forEach(day => { html += `<div class="timeline-item"><div class="timeline-day">${day.day}</div><div class="timeline-tasks">${day.items.length} Aufgaben</div></div>`; });
+            html += '</div><div class="timeline-section"><h3>📉 Abbau</h3>';
+            abbau.forEach(day => { html += `<div class="timeline-item"><div class="timeline-day">${day.day}</div><div class="timeline-tasks">${day.items.length} Aufgaben</div></div>`; });
+            html += '</div>';
+            timeline.innerHTML = html;
+        }
+
+        renderLageplan();
+    </script>
+</body>
+</html>
